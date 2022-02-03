@@ -6,7 +6,7 @@ import yaml
 QUEUE_NAME = "action"
 output_file = "beanstalk_dump.json"
 
-beanstalk = beanstalkc.Connection(host='12>7.0.0.1', port=11300)
+beanstalk = beanstalkc.Connection(host='127.0.0.1', port=11300)
 beanstalk.use(QUEUE_NAME)
 beanstalk.watch(QUEUE_NAME)
 JOBS = []
