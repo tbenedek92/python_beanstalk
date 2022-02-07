@@ -3,7 +3,7 @@ import time
 import json
 import yaml
 
-QUEUE_NAME = "action"
+QUEUE_NAME = "default"
 output_file = "beanstalk_dump.json"
 
 beanstalk = beanstalkc.Connection(host='127.0.0.1', port=11300)
@@ -15,13 +15,19 @@ def get_beanstalk_job_age(status):
     if status == 'ready':
         #job = beanstalk.peek_ready()
         job = beanstalk.reserve(10)
+        JOBS.append(job)
+
     elif status == 'delayed':
-        job = beanstalk.peek_delayed()
+        delayed_job = beanstalk.peek_delayed()
+
+        delayed_job.kick()
+
+        job = beanstalk.reserve(10)
+        JOBS.append([job, job.stats()['time-left']])
+
     elif status == 'buried':
         job = beanstalk.peek_buried()
-
     if job:
-        JOBS.append(job)
         return job.body, job.stats()['age']
     else:
         return("No job found")
@@ -49,9 +55,9 @@ if __name__ == '__main__':
     # beanstalk.ignore('default')
 
     num_jobs = {
-       # 'delayed': beanstalk.stats_tube(QUEUE_NAME)['current-jobs-delayed'],
+        'delayed': beanstalk.stats_tube(QUEUE_NAME)['current-jobs-delayed'],
        # 'buried': beanstalk.stats_tube(QUEUE_NAME)['current-jobs-buried'],
-        'ready': beanstalk.stats_tube(QUEUE_NAME)['current-jobs-ready'],
+       # 'ready': beanstalk.stats_tube(QUEUE_NAME)['current-jobs-ready'],
 
     }
 
@@ -61,7 +67,9 @@ if __name__ == '__main__':
 
         print("Current jobs " + str(status) + ": " + str(queue_length))
         print("Full stats:")
-        print(beanstalk.stats_tube(QUEUE_NAME))
+       # print(beanstalk.stats_tube(QUEUE_NAME))
         f.close()
-    for job in JOBS:
-        job.release()
+        for job in JOBS:
+            #job[0].stats()['time-left'] = job[1]
+            job[0].release(delay=job[1])
+        print(beanstalk.stats_tube(QUEUE_NAME))
